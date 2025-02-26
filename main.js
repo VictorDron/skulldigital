@@ -20,12 +20,12 @@ const renderScene = new THREE.RenderPass(scene, camera);
 
 const bloomPass = new THREE.UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  1.5,
-  0.4,
-  0.85
+  2.0,
+  0.3,
+  0.7
 );
 bloomPass.threshold = 0;
-bloomPass.strength = 0.6;
+bloomPass.strength = 1.2;
 
 const composer = new THREE.EffectComposer(renderer);
 composer.setPixelRatio(pixelRatio);
@@ -63,17 +63,13 @@ group.add(points);
 let sampler = null;
 const lines = [];
 let colors = [
-  new THREE.Color("#CFD6DE"),
-  new THREE.Color("#1EE3CF"),
-  new THREE.Color("#6B48FF"),
-  new THREE.Color("#125D98")
+  new THREE.Color("#FF0080"),  // Rosa neon
+  new THREE.Color("#00FF8F"),  // Verde neon
+  new THREE.Color("#8F00FF"),  // Roxo neon
+  new THREE.Color("#00FFFF"),  // Ciano neon
+  new THREE.Color("#FFD700")   // Dourado
 ];
-let galaxyColors = [
-  new THREE.Color("#CFD6DE").multiplyScalar(0.5),
-  new THREE.Color("#1EE3CF").multiplyScalar(0.5),
-  new THREE.Color("#6B48FF").multiplyScalar(0.5),
-  new THREE.Color("#125D98").multiplyScalar(0.5)
-];
+let galaxyColors = colors.map(color => color.clone().multiplyScalar(0.6));
 function dots() {
   sampler = new THREE.MeshSurfaceSampler(skull).build();
 
@@ -151,24 +147,21 @@ class Sparkle extends THREE.Vector3 {
     this.y = origin.y;
     this.z = origin.z;
     this.v = new THREE.Vector3();
-    /* X Speed */
-    this.v.x = THREE.MathUtils.randFloat(0.001, 0.006);
-    this.v.x *= Math.random() > 0.5 ? 1 : -1;
-    /* Y Speed */
-    this.v.y = THREE.MathUtils.randFloat(0.001, 0.006);
-    this.v.y *= Math.random() > 0.5 ? 1 : -1;
-    /* Z Speed */
-    this.v.z = THREE.MathUtils.randFloat(0.001, 0.006);
-    this.v.z *= Math.random() > 0.5 ? 1 : -1;
+    this.v.x = THREE.MathUtils.randFloat(0.001, 0.01);
+    this.v.y = THREE.MathUtils.randFloat(0.001, 0.01);
+    this.v.z = THREE.MathUtils.randFloat(0.001, 0.01);
 
-    this.size = Math.random() * 4 + 0.5 * pixelRatio;
-    this.slowDown = 0.4 + Math.random() * 0.58;
+    this.size = Math.random() * 6 + 0.5 * pixelRatio;
+    this.slowDown = 0.5 + Math.random() * 0.48;
     this.color = color;
+    this.life = 1.0;
   }
   update() {
     if (this.v.x > 0.001 || this.v.y > 0.001 || this.v.z > 0.001) {
       this.add(this.v);
       this.v.multiplyScalar(this.slowDown);
+      this.life *= 0.98;
+      this.size *= 0.995;
     }
   }
 }
@@ -202,7 +195,7 @@ const galaxyGeometryVertices = [];
 const galaxyGeometryColors = [];
 const galaxyGeometrySizes = [];
 
-for (let i = 0; i < 1500; i++) {
+for (let i = 0; i < 2500; i++) {
   const star = new Star();
   star.setup(galaxyColors[Math.floor(Math.random() * galaxyColors.length)]);
   galaxyGeometryVertices.push(star.x, star.y, star.z);
@@ -226,7 +219,12 @@ let _prev = 0;
 function render(a) {
   requestAnimationFrame(render);
 
+  // Efeito de pulso
+  const pulseFactor = Math.sin(a * 0.001) * 0.1 + 1;
+  group.scale.set(pulseFactor, pulseFactor, pulseFactor);
+  
   galaxyPoints.rotation.y += 0.0005;
+  galaxyPoints.rotation.x += 0.0002;
 
   if (a - _prev > 30) {
     lines.forEach((l) => {
@@ -307,4 +305,23 @@ function onWindowResize() {
   composer.setSize(window.innerWidth, window.innerHeight);
   renderer.setSize(window.innerWidth, window.innerHeight);
   bloomPass.setSize(window.innerWidth, window.innerHeight);
+}
+
+window.addEventListener('wheel', onMouseWheel);
+
+function onMouseWheel(event) {
+  const speed = event.deltaY * 0.0007;
+  
+  gsap.to(group.rotation, {
+    z: group.rotation.z + speed,
+    duration: 1.5,
+    ease: "power2.out"
+  });
+  
+  gsap.to(bloomPass, {
+    strength: event.deltaY > 0 ? 1.5 : 0.8,
+    duration: 0.5,
+    ease: "power1.out",
+    yoyo: true
+  });
 }
